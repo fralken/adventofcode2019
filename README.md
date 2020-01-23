@@ -18,7 +18,7 @@ cargo run --release 25
 Unit tests are available, based on examples from the descriptions. You can run them with
 
 ```
-cargo run --release [ dayXX ]
+cargo test --release [ dayXX ]
 ```
 
 where `XX` is between `01` and `25`. Without parameters, all tests are executed.
