@@ -11,7 +11,9 @@ struct Map {
     keys: BTreeMap<Position, char>
 }
 
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
 struct Path {
+    to: Position,
     length: usize,
     found_doors: BTreeSet<char>,
     found_keys: BTreeSet<char>
@@ -38,8 +40,8 @@ impl Map {
         Map { start, walls, doors, keys }
     }
 
-    fn find_paths(&self, start: Position) -> BTreeMap<Position, Path> {
-        let mut paths = BTreeMap::new();
+    fn find_paths(&self, start: Position) -> BTreeSet<Path> {
+        let mut paths = BTreeSet::new();
         let mut queue = VecDeque::new();
         let mut seen = BTreeSet::new();
 
@@ -58,7 +60,7 @@ impl Map {
                     })
                 );
                 if self.keys.get(&position).is_some() {
-                    paths.insert(position, Path { length, found_doors, found_keys } );
+                    paths.insert(Path { to: position, length, found_doors, found_keys });
                 }
             }
         }
@@ -66,13 +68,20 @@ impl Map {
         paths
     }
 
-    fn find_doors_and_keys(&self, start: Position) -> (BTreeSet<char>, BTreeSet<char>) {
+    fn find_doors_and_keys(&self, start: Position) -> (BTreeMap<Position, char>, BTreeMap<Position, char>) {
         let paths = self.find_paths(start);
-        paths.iter().fold((BTreeSet::new(), BTreeSet::new()), |a, p| {
-            let found_doors = a.0.union(&p.1.found_doors).cloned().collect();
-            let found_keys = a.1.union(&p.1.found_keys).cloned().collect();
+        let (found_doors, found_keys) = paths.iter().fold((BTreeSet::new(), BTreeSet::new()), |a, p| {
+            let found_doors = a.0.union(&p.found_doors).cloned().collect();
+            let found_keys = a.1.union(&p.found_keys).cloned().collect();
             (found_doors, found_keys)
-        })
+        });
+        let doors = self.doors.clone().into_iter()
+            .filter(|(_, d)| found_doors.contains(d))
+            .collect();
+        let keys = self.keys.clone().into_iter()
+            .filter(|(_, k)| found_keys.contains(k))
+            .collect();
+        (doors, keys)
     }
 }
 
@@ -97,7 +106,7 @@ pub fn second_star() {
 
 fn impl_first_star(contents: &str) -> usize {
     let grid = extract_map(contents);
-    find_shortest_path_length(Map::new(&grid))
+    find_shortest_path_length(&[Map::new(&grid)])
 }
 
 fn impl_second_star(contents: &str) -> usize {
@@ -109,29 +118,19 @@ fn impl_second_star(contents: &str) -> usize {
             .map(|(x, y)| (start.0 + *x, start.1 + *y))
     );
 
-    let mut total_length = 0;
-    for &(sx, sy) in [(1, 1), (1, -1), (-1, 1), (-1, -1)].iter() {
+    let maps = [(1, 1), (1, -1), (-1, 1), (-1, -1)].iter().map(|&(sx, sy)| {
         let start = (start.0 + sx, start.1 + sy);
-        let (found_doors, found_keys) = map.find_doors_and_keys(start);
-        let keys = map.keys.clone().into_iter()
-            .filter(|(_, k)| found_keys.contains(k))
-            .collect();
-        let doors = map.doors.clone().into_iter()
-            .filter(|(_, d)| found_doors.contains(d) && found_keys.contains(d))
-            .collect();
+        let (doors, keys) = map.find_doors_and_keys(start);
 
-        let local_map = Map {
+        Map {
             start,
             walls: map.walls.clone(),
             doors,
             keys
-        };
+        }
+    }).collect::<Vec<_>>();
 
-        let length = find_shortest_path_length(local_map);
-        total_length += length;
-    }
-
-    total_length
+    find_shortest_path_length(&maps)
 }
 
 fn extract_map(contents: &str) -> Vec<Vec<char>> {
@@ -140,29 +139,38 @@ fn extract_map(contents: &str) -> Vec<Vec<char>> {
         .collect()
 }
 
-fn find_shortest_path_length(map: Map) -> usize {
-    let paths_to_keys = [map.start].iter().chain(map.keys.keys())
-        .map(|position| (*position, map.find_paths(*position)))
-        .collect::<BTreeMap<_,_>>();
+fn find_shortest_path_length(maps: &[Map]) -> usize {
+    let multi_paths_to_keys = maps.iter()
+        .map(|map|
+            [map.start].iter().chain(map.keys.keys())
+                .map(|position| (*position, map.find_paths(*position)))
+                .collect::<BTreeMap<_,_>>()
+        ).collect::<Vec<_>>();
 
-    let total_keys = map.keys.len();
+    let total_keys = maps.iter().map(|map| map.keys.len()).sum();
     let mut queue = BinaryHeap::new();
     let mut seen = BTreeSet::new();
-    queue.push(Reverse((0, map.start, BTreeSet::new())));
+    let start_positions = maps.iter().map(|map| map.start).collect::<Vec<_>>();
+    queue.push(Reverse((0, start_positions, BTreeSet::new())));
 
-    while let Some(Reverse((length, position, found_keys))) = queue.pop() {
+    while let Some(Reverse((length, positions, found_keys))) = queue.pop() {
         if found_keys.len() == total_keys {
             return length;
         }
-        if seen.insert((position, found_keys.clone())) {
-            paths_to_keys[&position].iter()
-                .filter(|(_, path)|
-                    path.found_keys.iter().any(|k| !found_keys.contains(k)) &&
-                        path.found_doors.is_subset(&found_keys)
-                )
-                .for_each(|(position, path)| {
-                    queue.push(Reverse((length + path.length, *position, found_keys.union(&path.found_keys).cloned().collect())));
-                });
+        if seen.insert((positions.clone(), found_keys.clone())) {
+            for (i, position) in positions.iter().enumerate() {
+                let paths_to_keys = &multi_paths_to_keys[i];
+                paths_to_keys[&position].iter()
+                    .filter(|path|
+                        path.found_keys.iter().any(|k| !found_keys.contains(k)) &&
+                            path.found_doors.is_subset(&found_keys)
+                    )
+                    .for_each(|path| {
+                        let mut new_positions = positions.clone();
+                        new_positions[i] = path.to;
+                        queue.push(Reverse((length + path.length, new_positions, found_keys.union(&path.found_keys).cloned().collect())));
+                    });
+            }
         }
     }
 
@@ -275,16 +283,7 @@ fn test2_second_star() {
 }
 
 #[test]
-#[ignore]
 fn test3_second_star() {
-    // This test does not pass because this implementation assumes that
-    // if a robot reaches a door on the shortest path,
-    // another robot would collect that key along its shortest path, too.
-    // But this is not true in this example.
-    // (With this assumption you can solve all sections independently,
-    // just ignoring the doors whose keys are in other sections)
-    // Luckily for the real input this assumption is valid,
-    // so this simplification is enough to solve the problem
     let map = "\
         #############\n\
         #g#f.D#..h#l#\n\
