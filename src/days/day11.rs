@@ -29,12 +29,11 @@ fn paint(contents: &str, start_color: i64) -> HashMap<(i32, i32), i64> {
     let mut robot = IntCode::new(extract_codes(&contents));
     let mut panels = HashMap::new();
     while !finished {
-        robot.write(&[current_color]);
+        robot.write_one(current_color);
         finished = robot.interpreter();
         if !finished {
-            let mut output = robot.read();
-            let new_color = output.remove(0);
-            let rotation = output.remove(0);
+            let new_color = robot.read_one().unwrap();
+            let rotation = robot.read_one().unwrap();
             if new_color != current_color {
                 panels.insert(position, new_color);
             }

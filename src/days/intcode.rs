@@ -3,11 +3,12 @@
 //
 // It is used in days 9, 11, 13, 15, 17, 19, 21, 23, 25
 //
+use std::collections::VecDeque;
 
 #[derive(Default)]
 pub struct IntCode {
-    inputs: Vec<i64>,
-    outputs: Vec<i64>,
+    inputs: VecDeque<i64>,
+    outputs: VecDeque<i64>,
     codes: Vec<i64>,
     pos: usize,
     base: usize
@@ -30,16 +31,24 @@ impl IntCode {
         self.outputs.drain(..).map(|d| d as u8 as char).collect()
     }
 
+    pub fn read_one(&mut self) -> Option<i64> {
+        self.outputs.pop_front()
+    }
+
     pub fn no_output(&self) -> bool {
         self.outputs.is_empty()
     }
 
     pub fn write(&mut self, input: &[i64]) {
-        self.inputs.extend_from_slice(input)
+        self.inputs.extend(input)
     }
 
     pub fn write_string(&mut self, input: &str) {
         self.inputs.extend(input.chars().map(|c| c as i64))
+    }
+
+    pub fn write_one(&mut self, input: i64) {
+        self.inputs.push_back(input)
     }
 
     pub fn no_input(&self) -> bool {
@@ -93,16 +102,16 @@ impl IntCode {
                 },
                 3 => {
                     let res = self.get_position(mode,1);
-                    if self.inputs.is_empty() {
+                    if self.no_input() {
                         return false;
                     } else {
-                        let input = self.inputs.remove(0);
+                        let input = self.inputs.pop_front().unwrap();
                         self.set(res, input);
                         self.pos += 2;
                     }
                 },
                 4 => {
-                    self.outputs.push(self.get_param(mode, 1));
+                    self.outputs.push_back(self.get_param(mode, 1));
                     self.pos += 2;
                 },
                 5 => {

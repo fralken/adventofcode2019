@@ -7,7 +7,8 @@ pub fn first_star() {
 
     let mut game = IntCode::new(extract_codes(&contents));
     game.interpreter();
-    let count = game.read().chunks(3).filter(|c| c[2] == 2).count();
+    let output = game.read();
+    let count = output.chunks(3).filter(|c| c[2] == 2).count();
 
     println!("day 13.1 - num of block tiles on the screen when the game exits: {}", count);
 }
@@ -31,7 +32,7 @@ pub fn second_star() {
             else if c[2] == 4 { ball_x = c[0]; }
         });
         let joystick = (ball_x - paddle_x).signum();
-        game.write(&[joystick]);
+        game.write_one(joystick);
     }
 
     println!("day 13.2 - final score after the last block is broken: {}", score);

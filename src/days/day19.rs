@@ -51,5 +51,5 @@ fn run_droid(x: i64, y: i64, codes: &[i64]) -> i64 {
     let mut droid = IntCode::new(codes.to_owned());
     droid.write(&[x, y]);
     droid.interpreter();
-    droid.read().pop().unwrap()
+    droid.read_one().unwrap()
 }

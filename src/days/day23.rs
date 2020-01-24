@@ -25,7 +25,7 @@ pub fn first_star() {
         if packet.address != 255 {
             computers.iter_mut().for_each(|c| {
                 if c.no_input() {
-                    c.write(&[-1]);
+                    c.write_one(-1);
                 }
                 c.interpreter();
             });
@@ -52,7 +52,7 @@ pub fn second_star() {
         let idle = computers.iter_mut().all(|c| {
             let no_input = c.no_input();
             if no_input {
-                c.write(&[-1]);
+                c.write_one(-1);
             }
             c.interpreter();
             no_input && c.no_output()
@@ -71,7 +71,7 @@ pub fn second_star() {
 
 fn init_computer(i: usize, codes: &[i64]) -> IntCode {
     let mut computer = IntCode::new(codes.to_owned());
-    computer.write(&[i as i64]);
+    computer.write_one(i as i64);
     computer.interpreter();
     computer
 }
