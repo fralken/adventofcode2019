@@ -8,12 +8,7 @@ You can run it with
 cargo run --release [ day [ star ] ]
 ```
 
-where `day` is between 1 and 25 and `star` can be 1 or 2 for first or second star of the day. Without parameters, all stars between day 1 and day 24 are executed.
-Day 25 is an interactive adventure and must be run with
- 
-```
-cargo run --release 25
-```
+where `day` is between 1 and 25 and `star` can be 1 or 2 for first or second star of the day. Without parameters, all stars are executed.
 
 Unit tests are available, based on examples from the descriptions. You can run them with
 

@@ -27,18 +27,18 @@ fn main() {
         [day21::first_star, day21::second_star],
         [day22::first_star, day22::second_star],
         [day23::first_star, day23::second_star],
-        [day24::first_star, day24::second_star]
+        [day24::first_star, day24::second_star],
+        [day25::first_star, day25::second_star]
     ];
 
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         let day = args[1]
             .parse::<usize>()
-            .expect("you must enter a number between 1 and 24, or 25 to launch the final interactive adventure") - 1;
-        if day == 24 {
-            day25::last_star();
-        } else if day >= days.len() {
-            panic!("you must enter a number between 1 and 25");
+            .unwrap_or_else(|_|
+                panic!("you must enter a number between 1 and {} to launch the final interactive adventure", days.len())) - 1;
+        if day >= days.len() {
+            panic!("you must enter a number between 1 and {}", days.len());
         } else if args.len() > 2 {
             let star = args[2].parse::<usize>().expect("you must enter a number between 1 and 2") - 1;
             if star > 1 {
