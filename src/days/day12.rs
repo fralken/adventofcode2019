@@ -1,5 +1,6 @@
 use std::fs;
 use std::cmp::Ordering;
+use lazy_static::lazy_static;
 use regex::Regex;
 use num_integer::lcm;
 
@@ -54,9 +55,11 @@ fn impl_second_star(contents: &str) -> i64 {
     lcm(axis_steps[0], lcm(axis_steps[1], axis_steps[2]))
 }
 
-fn extract_coordinates(contents: &str) -> Vec<Moon>{
-    let re = Regex::new(r"<x=([-]?\d+),\sy=([-]?\d+),\sz=([-]?\d+)>").unwrap();
-    re.captures_iter(contents)
+fn extract_coordinates(contents: &str) -> Vec<Moon> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"<x=([-]?\d+),\sy=([-]?\d+),\sz=([-]?\d+)>").unwrap();
+    }
+    RE.captures_iter(contents)
         .map(|cap|
             Moon {
                 position: [cap[1].parse().unwrap(), cap[2].parse().unwrap(), cap[3].parse().unwrap()],
