@@ -1,7 +1,7 @@
 use std::fs;
 use crate::intcode::{ IntCode, extract_codes };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(PartialEq)]
 enum Command {
     North = 1,
     South = 2,
@@ -10,21 +10,21 @@ enum Command {
 }
 
 impl Command {
-    fn opposite(&self) -> Self {
+    fn opposite(&self) -> &'static Self {
         match self {
-            Command::North => Command::South,
-            Command::South => Command::North,
-            Command::West => Command::East,
-            Command::East => Command::West
+            Command::North => &Command::South,
+            Command::South => &Command::North,
+            Command::West => &Command::East,
+            Command::East => &Command::West
         }
     }
 
-    fn next(&self) -> Self {
+    fn next(&self) -> &'static Self {
         match self {
-            Command::North => Command::East,
-            Command::South => Command::West,
-            Command::West => Command::North,
-            Command::East => Command::South
+            Command::North => &Command::East,
+            Command::South => &Command::West,
+            Command::West => &Command::North,
+            Command::East => &Command::South
         }
     }
 
@@ -55,10 +55,10 @@ impl Command {
         }
     }
 
-    fn start() -> Self { Command::North }
+    fn start() -> &'static Self { &Command::North }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 enum Status {
     HitWall = 0,
     Moved = 1,
@@ -76,14 +76,13 @@ impl From<i64> for Status {
     }
 }
 
-#[derive(Debug)]
-struct Step {
-    command: Command,
+struct Step<'a> {
+    command: &'a Command,
     position: (i64, i64)
 }
 
-impl Step {
-    fn new(command: Command, position: (i64, i64)) -> Self {
+impl<'a> Step<'a> {
+    fn new(command: &'a Command, position: (i64, i64)) -> Self {
         Step { command, position }
     }
 }
@@ -117,9 +116,9 @@ pub fn second_star() {
 
 fn run(droid: &mut IntCode, steps: &mut Vec<Step>) -> usize {
     let mut max_path = 0;
-    let mut next_command = steps.last().unwrap().command.clone();
+    let mut next_command = steps.last().unwrap().command;
 
-    fn turn(command: &Command, steps: &[Step]) -> Command {
+    fn turn<'a>(command: &'a Command, steps: &[Step]) -> &'a Command {
         let len = steps.len();
         let mut next_command = command.next();
         if len > 1 && (next_command == steps[len - 2].command.opposite()) {
@@ -128,8 +127,8 @@ fn run(droid: &mut IntCode, steps: &mut Vec<Step>) -> usize {
         next_command
     }
 
-    fn backtrack(droid: &mut IntCode, command: &Command, steps: &mut Vec<Step>) -> Command {
-        let mut next_command = command.clone();
+    fn backtrack<'a>(droid: &mut IntCode, command: &'a Command, steps: &mut Vec<Step>) -> &'a Command {
+        let mut next_command = command;
         loop {
             let len = steps.len();
             if len > 1 && next_command == steps[len - 2].command {
@@ -150,16 +149,16 @@ fn run(droid: &mut IntCode, steps: &mut Vec<Step>) -> usize {
     }
 
     while !steps.is_empty() {
-        steps.last_mut().unwrap().command = next_command.clone();
+        steps.last_mut().unwrap().command = next_command;
         let status = go(droid, &next_command);
         match status {
             Status::HitWall => {
-                next_command = turn(&next_command, &steps);
-                next_command = backtrack(droid, &next_command, steps);
+                next_command = turn(next_command, &steps);
+                next_command = backtrack(droid, next_command, steps);
             },
             Status::Moved => {
                 let new_position = next_command.new_position(steps.last().unwrap().position);
-                steps.push(Step::new(next_command.clone(), new_position));
+                steps.push(Step::new(next_command, new_position));
                 if max_path < steps.len() { max_path = steps.len() }
             },
             Status::FoundOxygen => return steps.len()

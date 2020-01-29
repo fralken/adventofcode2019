@@ -37,7 +37,7 @@ fn impl_first_star(contents: &str) -> u32 {
         if let Some(p) = position {
             let (k, v) = orbits.get(p).unwrap();
             let count = orbits_count.get(k).map_or_else(|| 1, |c| c + 1);
-            orbits_count.insert(v.clone(), count);
+            orbits_count.insert(*v, count);
             orbits.remove(p);
         }
     }

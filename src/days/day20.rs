@@ -5,7 +5,7 @@ type Position = (isize, isize);
 
 type Portal = (Position, String, bool);
 
-type Paths = BTreeMap<Portal, BTreeMap<Portal, usize>>;
+type Paths<'a> = BTreeMap<&'a Portal, BTreeMap<&'a Portal, usize>>;
 
 pub fn first_star() {
     let contents = fs::read_to_string("./input/day20.txt")
@@ -29,7 +29,7 @@ fn impl_star(first: bool, contents: &str) -> usize {
     let map = extract_map(&contents);
     let portals = find_portals(&map);
     let paths = extract_paths(&map);
-    let paths_to_portals = portals.clone().into_iter()
+    let paths_to_portals = portals.iter()
         .map(|p|{
             let start = p.0;
             (p, find_paths_to_portals(start, &paths, &portals))
@@ -38,9 +38,9 @@ fn impl_star(first: bool, contents: &str) -> usize {
     let start = portals.iter().find(|p| p.1 == "AA").unwrap();
     let end = portals.iter().find(|p| p.1 == "ZZ").unwrap();
     if first {
-        find_shortest_path(start.clone(), end.clone(), &paths_to_portals)
+        find_shortest_path(start, end, &paths_to_portals)
     } else {
-        find_multilevel_shortest_path(start.clone(), end.clone(), &paths_to_portals)
+        find_multilevel_shortest_path(start, end, &paths_to_portals)
     }
 }
 
@@ -86,7 +86,7 @@ fn extract_paths(map: &[Vec<char>]) -> BTreeSet<Position> {
     paths
 }
 
-fn find_paths_to_portals(start: Position, valid_paths: &BTreeSet<Position>, portals: &BTreeSet<Portal>) -> BTreeMap<Portal, usize> {
+fn find_paths_to_portals<'a>(start: Position, valid_paths: &BTreeSet<Position>, portals: &'a BTreeSet<Portal>) -> BTreeMap<&'a Portal, usize> {
     let mut paths = BTreeMap::new();
     let mut queue = VecDeque::new();
     let mut seen = BTreeSet::new();
@@ -101,7 +101,7 @@ fn find_paths_to_portals(start: Position, valid_paths: &BTreeSet<Position>, port
             );
             if position != start {
                 if let Some(portal) = portals.iter().find(|p| p.0 == position) {
-                    paths.insert(portal.clone(), length + 1);
+                    paths.insert(portal, length + 1);
                 }
             }
         }
@@ -109,19 +109,19 @@ fn find_paths_to_portals(start: Position, valid_paths: &BTreeSet<Position>, port
     paths
 }
 
-fn find_shortest_path(start: Portal, end: Portal, paths: &Paths) -> usize {
+fn find_shortest_path(start: &Portal, end: &Portal, paths: &Paths) -> usize {
     let mut queue = VecDeque::new();
     let mut min_length = std::usize::MAX;
 
-    queue.push_back((0, &start));
+    queue.push_back((0, start));
     while let Some((length, portal)) = queue.pop_front() {
         if length < min_length {
             queue.extend(paths[portal].iter()
-                .filter_map(|(p, &l)|
+                .filter_map(|(&p, &l)|
                     if let Some(p_next) = paths.keys().find(|p_next| p_next.1 == p.1 && p_next.2 != p.2) {
-                        Some((length + l, p_next))
+                        Some((length + l, *p_next))
                     } else {
-                        if *p == end { min_length = min_length.min(length + l); }
+                        if p == end { min_length = min_length.min(length + l); }
                         None
                     }
                 )
@@ -131,21 +131,21 @@ fn find_shortest_path(start: Portal, end: Portal, paths: &Paths) -> usize {
     min_length - 1
 }
 
-fn find_multilevel_shortest_path(start: Portal, end: Portal, paths: &Paths) -> usize {
+fn find_multilevel_shortest_path(start: &Portal, end: &Portal, paths: &Paths) -> usize {
     let mut queue = VecDeque::new();
     let mut min_length = std::usize::MAX;
 
-    queue.push_back((0, 0, &start));
+    queue.push_back((0, 0, start));
     while let Some((length, level, portal)) = queue.pop_front() {
         if length < min_length {
             queue.extend(paths[portal].iter()
-                .filter_map(|(p, &l)|
-                    if (level > 0 && (*p == start || *p == end)) || (level == 0 && *p != start && *p != end && p.2) {
+                .filter_map(|(&p, &l)|
+                    if (level > 0 && (p == start || p == end)) || (level == 0 && p != start && p != end && p.2) {
                         None
                     } else if let Some(p_next) = paths.keys().find(|p_next| p_next.1 == p.1 && p_next.2 != p.2) {
-                        Some((length + l, if p.2 { level - 1 } else { level + 1 }, p_next))
+                        Some((length + l, if p.2 { level - 1 } else { level + 1 }, *p_next))
                     } else {
-                        if *p == end { min_length = min_length.min(length + l); }
+                        if p == end { min_length = min_length.min(length + l); }
                         None
                     }
                 )
