@@ -106,10 +106,7 @@ fn visit_and_collect(droid: &mut IntCode, from: Option<&str>, target: &str, bad_
                     }
                     // Go back
                     let command = format!("{}\n", opposite_direction(&dir));
-                    print(&command);
-                    droid.write_string(&command);
-                    droid.process();
-                    print(&droid.read_string());
+                    go(droid, &command, &print);
                 }
             }
         }
@@ -125,10 +122,7 @@ fn goto_target_location<'a>(droid: &mut IntCode, path_to_target: &'a [String], p
     // do not cross the last door
     for dir in path_to_target.iter().take(path_to_target.len() - 1) {
         let command = format!("{}\n", dir);
-        print(&command);
-        droid.write_string(&command);
-        droid.process();
-        print(&droid.read_string());
+        go(droid, &command, &print);
     }
 
     path_to_target.last().unwrap()
@@ -136,11 +130,7 @@ fn goto_target_location<'a>(droid: &mut IntCode, path_to_target: &'a [String], p
 
 fn pass_last_door(droid: &mut IntCode, last_door: &str, print: &impl Fn(&str)) {
     let command = "inv\n";
-    print(&command);
-    droid.write_string(&command);
-    droid.process();
-    let output = droid.read_string();
-    print(&output);
+    let output = go(droid, &command, &print);
 
     // true when item is taken by droid
     let mut items = parse_inventory(&output)
@@ -161,16 +151,10 @@ fn pass_last_door(droid: &mut IntCode, last_door: &str, print: &impl Fn(&str)) {
             let take = combinations & 1 << i != 0;
             if take && !item.1 {
                 let command = format!("take {}\n", item.0);
-                print(&command);
-                droid.write_string(&command);
-                droid.process();
-                print(&droid.read_string());
+                go(droid, &command, &print);
             } else if !take && item.1 {
                 let command = format!("drop {}\n", item.0);
-                print(&command);
-                droid.write_string(&command);
-                droid.process();
-                print(&droid.read_string());
+                go(droid, &command, &print);
             }
             item.1 = take;
         }
@@ -179,6 +163,15 @@ fn pass_last_door(droid: &mut IntCode, last_door: &str, print: &impl Fn(&str)) {
         print(&command);
         droid.write_string(&command);
     }
+}
+
+fn go(droid: &mut IntCode, command: &str, print: &impl Fn(&str)) -> String {
+    print(&command);
+    droid.write_string(&command);
+    droid.process();
+    let output = droid.read_string();
+    print(&output);
+    output
 }
 
 fn opposite_direction(dir: &str) -> &str {
