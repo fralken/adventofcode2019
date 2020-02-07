@@ -27,7 +27,7 @@ pub fn first_star() {
                 if c.no_input() {
                     c.write_one(-1);
                 }
-                c.interpreter();
+                c.process();
             });
         }
     }
@@ -54,7 +54,7 @@ pub fn second_star() {
             if no_input {
                 c.write_one(-1);
             }
-            c.interpreter();
+            c.process();
             no_input && c.no_output()
         });
 
@@ -72,7 +72,7 @@ pub fn second_star() {
 fn init_computer(i: usize, codes: &[i64]) -> IntCode {
     let mut computer = IntCode::new(codes.to_owned());
     computer.write_one(i as i64);
-    computer.interpreter();
+    computer.process();
     computer
 }
 

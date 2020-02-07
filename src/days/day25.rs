@@ -2,7 +2,7 @@ use std::fs;
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use regex::Regex;
-use crate::intcode::{ IntCode, extract_codes };
+use crate::intcode::{ IntCode, Status, extract_codes };
 
 pub fn first_star() {
     let last_message = impl_first_star(false);
@@ -41,7 +41,7 @@ fn visit_and_collect(droid: &mut IntCode, from: Option<&str>, print: &impl Fn(&s
         .collect();
     }
 
-    droid.interpreter();
+    droid.process();
     let output = droid.read_string();
     print(&output);
 
@@ -51,7 +51,7 @@ fn visit_and_collect(droid: &mut IntCode, from: Option<&str>, print: &impl Fn(&s
             let command = format!("take {}\n", item);
             print(&command);
             droid.write_string(&command);
-            droid.interpreter();
+            droid.process();
             print(&droid.read_string());
         }
     }
@@ -89,7 +89,7 @@ fn visit_and_collect(droid: &mut IntCode, from: Option<&str>, print: &impl Fn(&s
                 let command = format!("{}\n", opposite_direction(&dir));
                 print(&command);
                 droid.write_string(&command);
-                droid.interpreter();
+                droid.process();
                 print(&droid.read_string());
             }
         }
@@ -104,7 +104,7 @@ fn goto_target_location<'a>(droid: &mut IntCode, path_to_target: &'a [String], p
         let command = format!("{}\n", dir);
         print(&command);
         droid.write_string(&command);
-        droid.interpreter();
+        droid.process();
         print(&droid.read_string());
     }
 
@@ -115,7 +115,7 @@ fn pass_last_door(droid: &mut IntCode, last_door: &str, print: &impl Fn(&str)) {
     let command = "inv\n";
     print(&command);
     droid.write_string(&command);
-    droid.interpreter();
+    droid.process();
     let output = droid.read_string();
     print(&output);
 
@@ -131,7 +131,7 @@ fn pass_last_door(droid: &mut IntCode, last_door: &str, print: &impl Fn(&str)) {
     // try any combinations of items to have the correct weight
     let mut combinations = (1 << items.len()) - 1;
     // we finish when program ends
-    while !droid.interpreter() {
+    while droid.process() != Status::End {
         print(&droid.read_string());
         combinations -= 1;
         for (i, item) in items.iter_mut().enumerate() {
@@ -140,13 +140,13 @@ fn pass_last_door(droid: &mut IntCode, last_door: &str, print: &impl Fn(&str)) {
                 let command = format!("take {}\n", item.0);
                 print(&command);
                 droid.write_string(&command);
-                droid.interpreter();
+                droid.process();
                 print(&droid.read_string());
             } else if !take && item.1 {
                 let command = format!("drop {}\n", item.0);
                 print(&command);
                 droid.write_string(&command);
-                droid.interpreter();
+                droid.process();
                 print(&droid.read_string());
             }
             item.1 = take;

@@ -111,7 +111,7 @@ pub fn second_star() {
     let mut ascii = IntCode::new(codes);
     ascii.init_code(2);
     ascii.write_string(&input);
-    ascii.interpreter();
+    ascii.process();
     let value = ascii.read().pop().unwrap();
 
     println!("day 17.2 - dust collected by vacuum robot: {}", value);
@@ -145,7 +145,7 @@ fn impl_second_star(grid: &[Vec<char>])-> String {
 
 fn extract_grid(codes: &[i64]) -> Vec<Vec<char>>{
     let mut ascii = IntCode::new(codes.to_vec());
-    ascii.interpreter();
+    ascii.process();
 
     let output = ascii.read_string();
 

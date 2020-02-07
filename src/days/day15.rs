@@ -144,7 +144,7 @@ fn run(droid: &mut IntCode, steps: &mut Vec<Step>) -> usize {
 
     fn go(droid: &mut IntCode, command: &Command) -> Status {
         droid.write_one(command.to());
-        droid.interpreter();
+        droid.process();
         Status::from(droid.read_one().unwrap())
     }
 

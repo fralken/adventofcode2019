@@ -1,6 +1,6 @@
 use std::fs;
 use std::collections::HashMap;
-use crate::intcode::{ IntCode, extract_codes };
+use crate::intcode::{ IntCode, Status, extract_codes };
 
 pub fn first_star() {
     let contents = fs::read_to_string("./input/day11.txt")
@@ -25,13 +25,13 @@ fn paint(contents: &str, start_color: i64) -> HashMap<(i32, i32), i64> {
     let mut position = (0, 0);
     let mut direction = (0, -1);
     let mut current_color = start_color;
-    let mut finished = false;
+    let mut status = Status::Running;
     let mut robot = IntCode::new(extract_codes(&contents));
     let mut panels = HashMap::new();
-    while !finished {
+    while status != Status::End {
         robot.write_one(current_color);
-        finished = robot.interpreter();
-        if !finished {
+        status = robot.process();
+        if status != Status::End {
             let new_color = robot.read_one().unwrap();
             let rotation = robot.read_one().unwrap();
             if new_color != current_color {

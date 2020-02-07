@@ -14,6 +14,13 @@ pub struct IntCode {
     base: usize
 }
 
+#[derive(PartialEq)]
+pub enum Status {
+    Running,
+    Waiting,
+    End
+}
+
 impl IntCode {
     pub fn new(codes: Vec<i64>) -> Self {
         IntCode { codes, ..Default::default() }
@@ -81,8 +88,15 @@ impl IntCode {
         self.get(self.get_position(mode, param))
     }
 
-    pub fn interpreter(&mut self) -> bool {
+    pub fn process(&mut self) -> Status {
+        self.process_interruptable(|| false)
+    }
+
+    pub fn process_interruptable(&mut self, interrupt: impl Fn() -> bool) -> Status {
         while self.pos < self.codes.len() {
+            if interrupt() {
+                return Status::Running
+            }
             let mode = self.get(self.pos);
             let opcode = mode % 100;
             match opcode {
@@ -103,7 +117,7 @@ impl IntCode {
                 3 => {
                     let res = self.get_position(mode,1);
                     if self.no_input() {
-                        return false;
+                        return Status::Waiting;
                     } else {
                         let input = self.inputs.pop_front().unwrap();
                         self.set(res, input);
@@ -146,7 +160,7 @@ impl IntCode {
                 _ => panic!("wrong opcode {} at position {}", self.get(self.pos), self.pos)
             }
         }
-        true
+        Status::End
     }
 }
 

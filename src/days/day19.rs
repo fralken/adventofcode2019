@@ -50,6 +50,6 @@ pub fn second_star() {
 fn run_droid(x: i64, y: i64, codes: &[i64]) -> i64 {
     let mut droid = IntCode::new(codes.to_owned());
     droid.write(&[x, y]);
-    droid.interpreter();
+    droid.process();
     droid.read_one().unwrap()
 }

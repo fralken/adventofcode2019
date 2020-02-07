@@ -17,7 +17,7 @@ pub fn first_star() {
         ";
 
     jump_droid.write_string(instructions);
-    jump_droid.interpreter();
+    jump_droid.process();
     let output = jump_droid.read();
     let result = output.last().unwrap();
     println!("day 21.1 - amount of reported damage to the hull: {}", result);
@@ -42,7 +42,7 @@ pub fn second_star() {
         ";
 
     jump_droid.write_string(instructions);
-    jump_droid.interpreter();
+    jump_droid.process();
     let output = jump_droid.read();
     let result = output.last().unwrap();
     println!("day 21.2 - amount of reported damage to the hull: {}", result);

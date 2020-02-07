@@ -1,12 +1,12 @@
 use std::fs;
-use crate::intcode::{ IntCode, extract_codes };
+use crate::intcode::{ IntCode, Status, extract_codes };
 
 pub fn first_star() {
     let contents = fs::read_to_string("./input/day13.txt")
         .expect("Something went wrong reading the file");
 
     let mut game = IntCode::new(extract_codes(&contents));
-    game.interpreter();
+    game.process();
     let output = game.read();
     let count = output.chunks(3).filter(|c| c[2] == 2).count();
 
@@ -19,12 +19,12 @@ pub fn second_star() {
 
     let mut game = IntCode::new(extract_codes(&contents));
     game.init_code(2);
-    let mut finished = false;
+    let mut status = Status::Running;
     let mut score = 0;
     let mut paddle_x = 0;
     let mut ball_x = 0;
-    while !finished {
-        finished = game.interpreter();
+    while status != Status::End {
+        status = game.process();
         let output = game.read();
         output.chunks(3).for_each(|c| {
             if c[0] == -1 && c[1] == 0 { score = c[2] }

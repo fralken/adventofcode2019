@@ -24,7 +24,7 @@ pub fn second_star() {
 fn compute(codes: &[i64], input: &[i64]) -> Vec<i64> {
     let mut ampli = IntCode::new(codes.to_owned());
     ampli.write(input);
-    let _ = ampli.interpreter();
+    ampli.process();
     ampli.read()
 }
 
