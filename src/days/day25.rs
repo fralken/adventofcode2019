@@ -2,7 +2,7 @@ use std::fs;
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use regex::Regex;
-use crate::intcode::{ IntCode, Status, extract_codes };
+use crate::intcode::{ IntCode, Status, extract_codes, interrupt_after };
 
 pub fn first_star() {
     let last_message = impl_first_star(false);
@@ -20,82 +20,105 @@ pub fn impl_first_star(verbose: bool) -> String {
 
     let print = |s: &str| { if verbose { print!("{}", s)} };
 
-    let mut droid = IntCode::new(extract_codes(&contents));
-    let path_to_target = visit_and_collect(&mut droid, None, &print);
-    let last_door = goto_target_location(&mut droid, &path_to_target, &print);
-    pass_last_door(&mut droid, last_door, &|_| ()); // never print attempts to cross last door
+    let codes = extract_codes(&contents);
+    let target = "Security Checkpoint";
+    let mut bad_items = HashSet::new();
+    let mut droid = IntCode::new(codes.clone());
+    loop {
+        let result = visit_and_collect(&mut droid, None, target, &mut bad_items, &print);
+        match result {
+            Ok(path_to_target) => {
+                let last_door = goto_target_location(&mut droid, &path_to_target, &print);
+                pass_last_door(&mut droid, last_door, &|_| ()); // Never print attempts to cross last door
+                break;
+            },
+            Err(_) => droid = IntCode::new(codes.clone()) // Found bad item, reset and try again
+        }
+    }
 
     droid.read_string()
 }
 
-fn visit_and_collect(droid: &mut IntCode, from: Option<&str>, print: &impl Fn(&str)) -> Vec<String> {
-    lazy_static! {
-        static ref BAD_ITEMS: HashSet<&'static str> = vec![
-            "infinite loop",
-            "molten lava",
-            "escape pod",
-            "giant electromagnet",
-            "photons",
-        ]
-        .into_iter()
-        .collect();
-    }
-
-    droid.process();
+fn visit_and_collect(droid: &mut IntCode, from: Option<&str>, target: &str, bad_items: &mut HashSet<String>, print: &impl Fn(&str)) -> Result<Vec<String>, Status> {
+    let mut status = droid.process();
     let output = droid.read_string();
     print(&output);
 
-    // Automatically pick up "good" items
-    for item in parse_items(&output) {
-        if !BAD_ITEMS.contains(&item[..]) {
+    // Automatically pick up items
+    let items = parse_items(&output);
+    for item in &items {
+        if !bad_items.contains(*item) {
             let command = format!("take {}\n", item);
             print(&command);
             droid.write_string(&command);
-            droid.process();
+            // We guess that if droid is still running after 5000 cycles
+            // it is stuck in an infinite loop
+            status = droid.process_interruptable(interrupt_after(5000));
+            if status != Status::Waiting {
+                bad_items.insert((*item).to_string());
+                return Err(status)
+            }
             print(&droid.read_string());
         }
     }
 
     let mut path_to_target = Vec::new();
 
-    let location = parse_location(&output).unwrap();
-    let doors = parse_doors(&output);
-    if location == "Security Checkpoint" {
-        // If we are here we are coming from somewhere, so 'from' is Some(dir).
-        path_to_target.push(from.unwrap().to_string());
-        // Next location is "Pressure-Sensitive Floor", stop visiting doors because
-        // we need to collect all useful items first, but save door's direction
-        doors.into_iter()
-            .filter(|&d| Some(opposite_direction(&d)) != from)
-            .for_each(|d| path_to_target.push(d.to_string()));
-    } else {
-        // Explore all doors
-        for dir in doors {
-            // Do not back track while exploring
-            if Some(opposite_direction(&dir)) != from {
-                // Go through door
-                let command = format!("{}\n", &dir);
-                print(&command);
-                droid.write_string(&command);
-                // Explore
-                let path = visit_and_collect(droid, Some(dir), print);
-                if !path.is_empty() {
-                    if let Some(f) = from {
-                        path_to_target.push(f.to_string());
+    if let Some(location) = parse_location(&output) {
+        let doors = parse_doors(&output);
+        if location == target {
+            if let Some(dir) = from {
+                path_to_target.push(dir.to_string());
+            }
+            // Next location is "Pressure-Sensitive Floor", stop visiting doors because
+            // we need to collect all useful items first, but save door's direction
+            doors.into_iter()
+                .filter(|&d| Some(opposite_direction(&d)) != from)
+                .for_each(|d| path_to_target.push(d.to_string()));
+        } else {
+            // Explore all doors
+            for dir in doors {
+                // Do not back track while exploring
+                if Some(opposite_direction(&dir)) != from {
+                    // Go through door
+                    let command = format!("{}\n", &dir);
+                    print(&command);
+                    droid.write_string(&command);
+                    // Explore
+                    let result = visit_and_collect(droid, Some(dir), target, bad_items, print);
+                    match result {
+                        Ok(path) =>
+                            if !path.is_empty() {
+                                if let Some(f) = from {
+                                    path_to_target.push(f.to_string());
+                                }
+                                path_to_target.extend_from_slice(&path);
+                            },
+                        Err(status) => {
+                            if status == Status::Waiting {
+                                // Items in this room are blocking the droid here, consider them bad
+                                for item in &items {
+                                    bad_items.insert((*item).to_string());
+                                }
+                            }
+                            return Err(Status::End)
+                        }
                     }
-                    path_to_target.extend_from_slice(&path);
+                    // Go back
+                    let command = format!("{}\n", opposite_direction(&dir));
+                    print(&command);
+                    droid.write_string(&command);
+                    droid.process();
+                    print(&droid.read_string());
                 }
-                // Go back
-                let command = format!("{}\n", opposite_direction(&dir));
-                print(&command);
-                droid.write_string(&command);
-                droid.process();
-                print(&droid.read_string());
             }
         }
+    } else {
+        // We are stuck in the same room, waiting for input
+        return Err(status)
     }
 
-    path_to_target
+    Ok(path_to_target)
 }
 
 fn goto_target_location<'a>(droid: &mut IntCode, path_to_target: &'a [String], print: &impl Fn(&str)) -> &'a String {

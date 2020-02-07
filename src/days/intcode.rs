@@ -92,7 +92,7 @@ impl IntCode {
         self.process_interruptable(|| false)
     }
 
-    pub fn process_interruptable(&mut self, interrupt: impl Fn() -> bool) -> Status {
+    pub fn process_interruptable(&mut self, mut interrupt: impl FnMut() -> bool) -> Status {
         while self.pos < self.codes.len() {
             if interrupt() {
                 return Status::Running
@@ -169,4 +169,12 @@ pub fn extract_codes(contents: &str) -> Vec<i64> {
         .split(',')
         .map(|s| s.parse::<i64>().unwrap())
         .collect()
+}
+
+pub fn interrupt_after(cycles: usize) -> impl FnMut() -> bool {
+    let mut elapsed = 0;
+    move || {
+        elapsed += 1;
+        elapsed >= cycles
+    }
 }
