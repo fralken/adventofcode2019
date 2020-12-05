@@ -36,7 +36,7 @@ fn main() {
         let day = args[1]
             .parse::<usize>()
             .unwrap_or_else(|_|
-                panic!("you must enter a number between 1 and {} to launch the final interactive adventure", days.len())) - 1;
+                panic!("you must enter a number between 1 and {}", days.len())) - 1;
         if day >= days.len() {
             panic!("you must enter a number between 1 and {}", days.len());
         } else if args.len() > 2 {
