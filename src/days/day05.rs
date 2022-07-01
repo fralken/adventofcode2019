@@ -29,7 +29,7 @@ fn interpreter(mut codes: Vec<i32>, input: i32) -> (Vec<i32>, i32) {
             1 => codes[pos + param],
             _ => panic!("wrong parameter mode {} at position {} for opcode {}", param_mode, pos, mode)
         }
-    };
+    }
 
     let mut output = 0;
     let mut pos = 0;
